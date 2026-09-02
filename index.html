@@ -1070,6 +1070,7 @@ function myPos(){
   if(MODE === 'cpu') return 0;
   if(!NET.room) return 0;
   const i = NET.room.seats.findIndex(s => s.id === NET.id);
+  NET.seatMissing = (i < 0);
   return i < 0 ? 0 : i;
 }
 const turnSig = g => `${g.phase}:${g.handIndex}:${g.bidPos}:${g.trick.length}`;
@@ -1263,9 +1264,16 @@ function render(){
   });
 
   document.getElementById('gameNet').classList.toggle('hidden', MODE !== 'online');
-  if(MODE === 'online')
+  if(MODE === 'online'){
+    const ageSec = NET.at ? Math.round((Date.now() - NET.at)/1000) : '?';
+    const idShort = (NET.id||'').slice(0,5);
     document.getElementById('gameNetTxt').textContent =
-      (NET.status === 'offline' ? '⚠ riconnessione…' : 'stanza ' + NET.code);
+      (NET.status === 'offline' ? '⚠ riconnessione…' : 'stanza ' + NET.code) +
+      ` · io: ${g.names[me]||'?'} (${idShort}) · posto ${me} · ${hand.length} carte · agg. ${ageSec}s fa`;
+    if(NET.seatMissing){
+      sm.textContent = '⚠ Non trovo il tuo posto in questa stanza — ricarica la pagina.';
+    }
+  }
 
   if(g.phase === 'handEnd') renderHandEnd(g, me); else document.getElementById('handOverlay').classList.add('hidden');
   if(g.phase === 'gameEnd') renderEnd(g, me);     else document.getElementById('endOverlay').classList.add('hidden');
