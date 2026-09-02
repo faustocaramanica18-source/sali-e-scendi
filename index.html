@@ -827,7 +827,7 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // niente I e O, si confondono
 const kState  = c => `sas:${c}:state`;
 const kPlayer = (c,id) => `sas:${c}:p:${id}`;
 const kJoin   = c => `sas:${c}:join`;
-const POLL_MS = 1800;
+const POLL_MS = 900;
 
 const NET = {
   code:null, id:null, name:'Giocatore', host:false, ready:false,
@@ -1142,9 +1142,8 @@ function handCardWidth(c){ if(c >= 8) return 48; if(c === 7) return 52; if(c >= 
 
 function remainingMs(){
   const g = currentGame();
-  if(!g || g.deadline === null || MODE !== 'online' || !NET.room) return null;
-  const atWrite = g.deadline - NET.room.updatedAt;
-  return Math.max(0, atWrite - (Date.now() - NET.at));
+  if(!g || g.deadline === null || MODE !== 'online') return null;
+  return Math.max(0, g.deadline - Date.now());
 }
 
 function renderAll(){
@@ -1346,7 +1345,8 @@ function renderTimer(){
   const bar = document.getElementById('timerBar');
   const fill = document.getElementById('timerFill');
   const rem = remainingMs();
-  const myTurnNow = g && (g.phase === 'bidding' || g.phase === 'playing') && g.turnPlayer === myPos();
+  const waiting = MODE === 'online' && g && NET.sentSig === turnSig(g);
+  const myTurnNow = g && (g.phase === 'bidding' || g.phase === 'playing') && g.turnPlayer === myPos() && !waiting;
   if(!g || rem === null || !myTurnNow){ bar.classList.add('hidden'); return; }
   bar.classList.remove('hidden');
   const pct = Math.max(0, Math.min(100, rem / TURN_MS * 100));
@@ -1526,7 +1526,7 @@ document.getElementById('quitBtn').onclick = async () => {
   MODE = 'home'; showScreen('home');
 };
 
-const APP_VERSION = '16';
+const APP_VERSION = '17';
 document.getElementById('verLine').textContent = 'versione ' + APP_VERSION;
 document.getElementById('versionBadge').textContent = 'v' + APP_VERSION;
 
