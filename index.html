@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Sali e Scendi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+  :root{
+    --felt-dark:#0C2019; --felt:#164033; --felt-light:#1E5340;
+    --cream:#F4ECD8; --ink:#2B2119;
+    --gold:#C9A227; --gold-light:#EAD08A; --amber:#E8B44C;
+    --coppe:#9E3535; --spade:#2563C9; --bastoni:#4E8A33; --denari:#B8871B;
+    --line:rgba(244,236,216,0.16);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{font-family:'Inter',sans-serif;
+    background:radial-gradient(ellipse at 50% 25%, var(--felt-light), var(--felt) 50%, var(--felt-dark) 100%);
+    color:var(--cream);min-height:100vh;overflow-x:hidden;-webkit-user-select:none;user-select:none;}
+  h1,h2{font-family:'Fraunces',serif;}
+  #app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding:10px 10px 16px;}
+  .hidden{display:none !important;}
+
+  /* SETUP */
+  .setup-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:16px 4px;}
+  .title-block{text-align:center;}
+  .title-block h1{font-size:42px;font-weight:900;margin:0;line-height:1.05;color:var(--gold-light);}
+  .title-block p{margin:8px 0 0;font-size:14px;opacity:.72;line-height:1.5;}
+  .field{display:flex;flex-direction:column;gap:9px;}
+  .field label{font-size:13px;color:var(--gold-light);font-weight:600;}
+  .choice-row{display:flex;gap:9px;}
+  .choice{flex:1;padding:13px 6px;border-radius:13px;border:1.5px solid var(--line);
+    background:rgba(244,236,216,.05);color:var(--cream);font-size:14.5px;font-weight:600;text-align:center;cursor:pointer;transition:.15s;}
+  .choice.active{background:var(--gold);border-color:var(--gold);color:var(--ink);}
+  .btn-main{margin-top:6px;padding:16px;border-radius:15px;border:none;
+    background:linear-gradient(180deg,var(--gold-light),var(--gold));color:var(--ink);
+    font-family:'Fraunces',serif;font-weight:600;font-size:18px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);}
+  .btn-main:active{transform:translateY(1px);}
+  .note{font-size:12.5px;opacity:.55;text-align:center;line-height:1.5;}
+  .setup-preview{display:flex;justify-content:center;gap:5px;}
+  .setup-preview svg{width:52px;height:73px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));}
+
+  /* TOP */
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .hand-pill{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;}
+  .hand-pill b{color:var(--amber);}
+  .icon-btn{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:50%;width:30px;height:30px;
+    color:var(--cream);font-size:16px;cursor:pointer;line-height:1;}
+  .dealer-banner{background:linear-gradient(90deg,rgba(201,162,39,.25),rgba(201,162,39,.06));
+    border:1px solid rgba(201,162,39,.45);border-radius:11px;padding:7px 11px;
+    font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .dealer-banner .chip{background:var(--gold);color:var(--ink);border-radius:6px;padding:2px 7px;font-size:10.5px;font-weight:800;letter-spacing:.3px;}
+
+  /* TAVOLO */
+  .table-wrap{position:relative;width:100%;margin:0 -4px;aspect-ratio:1/0.95;max-height:52vh;}
+  .felt{position:absolute;inset:4% 5%;border-radius:50%;
+    background:radial-gradient(ellipse at 50% 38%, #235C46, #143528 78%);
+    border:2px solid rgba(201,162,39,.32);
+    box-shadow:inset 0 0 42px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.35);}
+  .trump-badge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;}
+  .trump-badge .lbl{font-family:'Cinzel',serif;font-size:10px;letter-spacing:1.2px;color:var(--gold-light);opacity:.9;}
+  .trump-badge svg{width:62px;height:87px;filter:drop-shadow(0 5px 12px rgba(0,0,0,.55));}
+  .trump-badge.notrump{font-family:'Cinzel',serif;font-size:13px;font-weight:600;color:var(--amber);text-align:center;line-height:1.4;letter-spacing:.5px;}
+
+  .seat{position:absolute;transform:translate(-50%,-50%);
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:rgba(8,22,17,.85);border:1.5px solid transparent;border-radius:12px;
+    padding:5px 8px;min-width:74px;transition:border-color .2s, background .2s;}
+  .seat.turn{border-color:var(--amber);background:rgba(232,180,76,.2);}
+  .seat.won{border-color:#7DD3A0;background:rgba(125,211,160,.22);}
+  .seat .nm{font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+  .seat .dealer-dot{background:var(--gold);color:var(--ink);border-radius:4px;font-size:8.5px;font-weight:800;padding:1px 4px;}
+  .seat .said{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--ink);
+    background:var(--gold-light);border-radius:7px;padding:1px 9px;white-space:nowrap;}
+  .seat .said.waiting{background:transparent;color:var(--cream);opacity:.5;font-family:'Inter',sans-serif;font-size:10.5px;font-weight:500;}
+  .seat .taken{font-size:10px;opacity:.75;white-space:nowrap;}
+
+  .played{position:absolute;transform:translate(-50%,-50%);}
+  .played svg{width:42px;height:59px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.55));}
+
+  .status-msg{text-align:center;font-size:13px;color:var(--amber);font-weight:600;min-height:18px;padding:0 8px;}
+
+  /* SCOMMESSE */
+  .bid-panel{display:flex;flex-direction:column;gap:8px;align-items:center;padding:4px 0 0;}
+  .bid-panel p{margin:0;font-size:13px;text-align:center;opacity:.88;}
+  .bid-options{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+  .bid-btn{width:40px;height:40px;border-radius:50%;border:2px solid var(--gold);background:transparent;
+    color:var(--cream);font-family:'Cinzel',serif;font-weight:700;font-size:15px;cursor:pointer;}
+  .bid-btn:active:not(.forbidden){background:var(--gold);color:var(--ink);}
+  .bid-btn.forbidden{opacity:.2;border-color:var(--line);cursor:not-allowed;}
+  .forbidden-note{font-size:11.5px;opacity:.62;text-align:center;line-height:1.4;padding:0 12px;}
+
+  /* MIA MANO */
+  .hand-area{margin-top:auto;display:flex;flex-direction:column;gap:4px;}
+  .my-info{display:flex;justify-content:space-between;align-items:center;padding:0 4px;font-size:12.5px;}
+  .my-info .nm{font-weight:700;color:var(--amber);display:flex;align-items:center;gap:5px;}
+  .my-info .dealer-dot{background:var(--gold);color:var(--ink);border-radius:4px;font-size:8.5px;font-weight:800;padding:1px 5px;letter-spacing:.3px;}
+  .my-hand{display:flex;justify-content:center;padding:4px 0 0;min-height:94px;align-items:flex-end;}
+  .my-hand .slot{transition:transform .14s;}
+  .my-hand svg{filter:drop-shadow(0 4px 9px rgba(0,0,0,.45));display:block;}
+  .slot.playable{cursor:pointer;}
+  .slot.playable:active{transform:translateY(-12px);}
+  .slot.blocked{opacity:.32;}
+
+  /* OVERLAY */
+  .overlay{position:fixed;inset:0;background:rgba(5,14,10,.92);display:flex;align-items:center;justify-content:center;z-index:60;padding:18px;}
+  .sheet{background:var(--felt-light);border:1px solid var(--line);border-radius:20px;padding:20px;max-width:400px;width:100%;
+    display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.55);max-height:88vh;overflow-y:auto;}
+  .sheet h2{margin:0;font-size:21px;color:var(--gold-light);}
+  .sheet .sub{font-size:12.5px;opacity:.7;margin-top:-6px;}
+  .score-row{display:flex;justify-content:space-between;align-items:center;gap:8px;
+    background:rgba(0,0,0,.2);border-radius:10px;padding:8px 11px;font-size:13px;}
+  .score-row.me{border:1px solid var(--gold);}
+  .score-row b{color:var(--amber);font-family:'Cinzel',serif;font-size:16px;}
+  .delta.plus{color:#7DD3A0;font-weight:700;}
+  .delta.minus{color:#E88C8C;font-weight:700;}
+  ::-webkit-scrollbar{display:none;}
+
+  /* ---------- HOME / LOBBY / RETE ---------- */
+  .home-actions{display:flex;flex-direction:column;gap:10px;}
+  .big-btn{padding:15px;border-radius:15px;border:1.5px solid var(--line);
+    background:rgba(244,236,216,.06);color:var(--cream);font-size:15.5px;font-weight:600;
+    cursor:pointer;text-align:left;display:flex;align-items:center;gap:11px;}
+  .big-btn .ic{font-size:19px;}
+  .big-btn.primary{background:linear-gradient(180deg,var(--gold-light),var(--gold));color:var(--ink);border:none;
+    font-family:'Fraunces',serif;font-size:17px;}
+  .text-input{padding:13px 14px;border-radius:13px;border:1.5px solid var(--line);
+    background:rgba(0,0,0,.22);color:var(--cream);font-size:15px;font-family:'Inter',sans-serif;width:100%;}
+  .text-input::placeholder{color:rgba(244,236,216,.4);}
+  .code-input{font-family:'Cinzel',serif;font-size:30px;letter-spacing:9px;text-align:center;text-transform:uppercase;font-weight:700;}
+  .code-box{background:rgba(0,0,0,.28);border:1.5px dashed rgba(201,162,39,.55);border-radius:16px;
+    padding:14px;text-align:center;}
+  .code-box .code{font-family:'Cinzel',serif;font-size:38px;font-weight:700;letter-spacing:8px;color:var(--gold-light);line-height:1.1;}
+  .code-box .hint{font-size:11.5px;opacity:.6;margin-top:6px;line-height:1.45;}
+  .player-row{display:flex;justify-content:space-between;align-items:center;gap:8px;
+    background:rgba(0,0,0,.2);border-radius:11px;padding:10px 12px;font-size:13.5px;border:1px solid transparent;}
+  .player-row.me{border-color:rgba(201,162,39,.55);}
+  .player-row.empty{opacity:.35;border-style:dashed;border-color:var(--line);}
+  .pname{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .ptag{font-size:9.5px;font-weight:700;border-radius:5px;padding:1px 5px;letter-spacing:.3px;}
+  .ptag.host{background:var(--gold);color:var(--ink);}
+  .ptag.bot{background:rgba(244,236,216,.18);color:var(--cream);}
+  .ptag.off{background:rgba(232,140,140,.28);color:#F0B8B8;}
+  .pready{font-size:11.5px;font-weight:600;}
+  .pready.yes{color:#7DD3A0;} .pready.no{opacity:.5;}
+  .ready-btn{padding:14px;border-radius:14px;border:1.5px solid var(--gold);background:transparent;
+    color:var(--cream);font-size:15px;font-weight:700;cursor:pointer;}
+  .ready-btn.on{background:#2C7A54;border-color:#2C7A54;}
+  .row2{display:flex;gap:9px;}
+  .row2 > *{flex:1;}
+  .small-btn{padding:11px;border-radius:12px;border:1.5px solid var(--line);background:transparent;
+    color:var(--cream);font-size:13px;font-weight:600;cursor:pointer;}
+  .small-btn:disabled{opacity:.35;}
+  .net-line{font-size:11.5px;opacity:.55;text-align:center;}
+  .warn-box{background:rgba(232,140,140,.14);border:1px solid rgba(232,140,140,.4);border-radius:12px;
+    padding:11px 13px;font-size:12.5px;line-height:1.5;color:#F0C0C0;}
+  .timer-bar{display:flex;align-items:center;gap:8px;padding:0 4px;}
+  .timer-track{flex:1;height:5px;border-radius:3px;background:rgba(0,0,0,.3);overflow:hidden;}
+  .timer-fill{height:100%;background:var(--amber);border-radius:3px;transition:width .25s linear;}
+  .timer-fill.urgent{background:#E88C8C;}
+  .timer-secs{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--amber);min-width:26px;text-align:right;}
+  .game-net{font-size:11px;opacity:.6;text-align:center;}
+  .dealer-dot.off{background:rgba(232,140,140,.35);color:#F0C0C0;}
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:90;
+    background:rgba(8,22,17,.95);border:1px solid var(--line);border-radius:12px;
+    padding:11px 16px;font-size:13.5px;box-shadow:0 8px 22px rgba(0,0,0,.5);}
+  .scroll-wrap{display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding-bottom:10px;}
+  .ver-line{font-size:10.5px;opacity:.4;text-align:center;letter-spacing:.5px;}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ HOME ============ -->
+  <div id="home" class="setup-wrap">
+    <div class="title-block">
+      <h1>Sali e Scendi</h1>
+      <p>Scommetti le prese, mano dopo mano.<br>Da 1 a 8 carte, e ritorno.</p>
+    </div>
+    <div class="setup-preview" id="setupPreview"></div>
+    <div class="field">
+      <label>Il tuo nome</label>
+      <input class="text-input" id="nameInput" maxlength="14" placeholder="Come ti chiami?">
+    </div>
+    <div class="home-actions">
+      <button class="big-btn primary" id="goCpuBtn"><span class="ic">🎴</span> Gioca contro il computer</button>
+      <button class="big-btn" id="goCreateBtn"><span class="ic">👥</span> Crea una stanza con gli amici</button>
+      <button class="big-btn" id="goJoinBtn"><span class="ic">🔑</span> Entra con un codice</button>
+    </div>
+    <div class="net-line" id="netProbe">controllo il collegamento…</div>
+    <button class="small-btn" id="retryNetBtn" style="width:100%;">Esegui diagnostica</button>
+    <div class="warn-box hidden" id="onlineWarn">
+      <b>Non riesco a collegarmi al database della partita.</b><br>
+      Controlla la connessione internet e riprova. Se il problema continua, il dettaglio qui sotto aiuta a capire cosa non va.
+      <div id="diagLine" style="margin-top:8px;opacity:.9;font-size:11.5px;line-height:1.6;font-family:monospace;"></div>
+    </div>
+    <div class="ver-line" id="verLine"></div>
+  </div>
+
+  <!-- ============ PARTITA CONTRO IL COMPUTER ============ -->
+  <div id="setupCpu" class="setup-wrap hidden">
+    <div class="title-block"><h1 style="font-size:30px;">Contro il computer</h1></div>
+    <div class="field">
+      <label>Giocatori</label>
+      <div class="choice-row" id="playerChoice">
+        <div class="choice active" data-val="4">4 giocatori</div>
+        <div class="choice" data-val="5">5 giocatori</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ritmo del computer</label>
+      <div class="choice-row" id="speedChoice">
+        <div class="choice" data-val="slow">Lento</div>
+        <div class="choice active" data-val="normal">Normale</div>
+        <div class="choice" data-val="fast">Veloce</div>
+      </div>
+    </div>
+    <button class="btn-main" id="startBtn">Inizia la partita</button>
+    <button class="small-btn" id="backHome1">Indietro</button>
+  </div>
+
+  <!-- ============ ENTRA CON CODICE ============ -->
+  <div id="joinScreen" class="setup-wrap hidden">
+    <div class="title-block">
+      <h1 style="font-size:30px;">Entra in una stanza</h1>
+      <p>Chiedi il codice a chi ha creato la stanza.</p>
+    </div>
+    <input class="text-input code-input" id="codeInput" maxlength="4" placeholder="····" autocomplete="off">
+    <button class="btn-main" id="joinBtn">Entra</button>
+    <button class="small-btn" id="backHome2">Indietro</button>
+  </div>
+
+  <!-- ============ LOBBY ============ -->
+  <div id="lobby" class="setup-wrap hidden">
+    <div class="scroll-wrap">
+      <div class="title-block"><h1 style="font-size:28px;">La tua stanza</h1></div>
+      <div class="code-box">
+        <div class="code" id="roomCode">····</div>
+        <div class="hint">Manda questo codice ai tuoi amici<br>insieme al link dell'app</div>
+      </div>
+      <button class="small-btn" id="copyBtn">Copia l'invito</button>
+
+      <div class="field">
+        <label>Giocatori — <span id="lobbyCount">1 di 4</span></label>
+        <div id="playerList" style="display:flex;flex-direction:column;gap:7px;"></div>
+      </div>
+
+      <div id="hostBox" class="field hidden">
+        <label>Impostazioni della stanza</label>
+        <div class="choice-row" id="maxChoice">
+          <div class="choice active" data-val="4">4 giocatori</div>
+          <div class="choice" data-val="5">5 giocatori</div>
+        </div>
+        <div class="row2">
+          <button class="small-btn" id="addBotBtn">+ Computer</button>
+          <button class="small-btn" id="removeBotBtn">− Computer</button>
+        </div>
+        <button class="btn-main" id="startOnlineBtn">Inizia la partita</button>
+      </div>
+
+      <button class="ready-btn" id="readyBtn">Metti pronto</button>
+      <div class="net-line" id="netStatus">collegato</div>
+      <button class="small-btn" id="leaveLobbyBtn">Esci dalla stanza</button>
+    </div>
+  </div>
+
+  <!-- ============ TAVOLO ============ -->
+  <div id="game" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:6px;">
+    <div class="topbar">
+      <div class="hand-pill">Mano <b id="handIdx">1</b>/16 · <span id="handSizeLbl"></span></div>
+      <button class="icon-btn" id="menuBtn">⋯</button>
+    </div>
+    <div class="dealer-banner" id="dealerBanner"></div>
+    <div class="table-wrap">
+      <div class="felt"></div>
+      <div id="tableLayer"></div>
+    </div>
+    <div class="status-msg" id="statusMsg"></div>
+    <div class="timer-bar hidden" id="timerBar">
+      <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+      <div class="timer-secs" id="timerSecs">15s</div>
+    </div>
+    <div class="bid-panel hidden" id="bidPanel">
+      <p>Quante prese pensi di fare?</p>
+      <div class="bid-options" id="bidOptions"></div>
+      <div class="forbidden-note hidden" id="forbiddenNote"></div>
+    </div>
+    <div class="hand-area">
+      <div class="my-info">
+        <span class="nm" id="myNameTag">Tu</span>
+        <span id="myBidInfo" style="opacity:.85;"></span>
+      </div>
+      <div class="my-hand" id="myHand"></div>
+      <div class="game-net hidden" id="gameNet"><span id="gameNetTxt"></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="handOverlay">
+  <div class="sheet">
+    <h2>Fine mano</h2>
+    <div class="sub" id="handOverlaySub"></div>
+    <div id="handScoreList" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <button class="btn-main" id="continueBtn">Continua</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endOverlay">
+  <div class="sheet">
+    <h2 id="endTitle">Partita finita</h2>
+    <div id="finalScoreList" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <button class="btn-main" id="restartBtn">Nuova partita</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="menuOverlay">
+  <div class="sheet">
+    <h2>Impostazioni</h2>
+    <div class="field hidden" id="speedRow">
+      <label>Ritmo del computer</label>
+      <div class="choice-row" id="speedChoiceGame">
+        <div class="choice" data-val="slow">Lento</div>
+        <div class="choice" data-val="normal">Normale</div>
+        <div class="choice" data-val="fast">Veloce</div>
+      </div>
+    </div>
+    <button class="btn-main" id="resumeBtn">Riprendi</button>
+    <button class="choice" id="quitBtn" style="border-color:rgba(232,140,140,.5);color:#E88C8C;">Abbandona partita</button>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   1. DATI DI BASE
+   ============================================================ */
+const SUITS = {
+  denari:  {name:'Denari',  hex:'#B8871B', dark:'#7C5A0E'},
+  coppe:   {name:'Coppe',   hex:'#9E3535', dark:'#6B2020'},
+  spade:   {name:'Spade',   hex:'#2563C9', dark:'#153F86'},
+  bastoni: {name:'Bastoni', hex:'#4E8A33', dark:'#33601F'}
+};
+const SUIT_KEYS = Object.keys(SUITS);
+const RANK_FULL = {1:'Asso',2:'Due',3:'Tre',4:'Quattro',5:'Cinque',6:'Sei',7:'Sette',8:'Fante',9:'Cavallo',10:'Re'};
+const FIGURE_NAME = {8:'FANTE',9:'CAVALLO',10:'RE'};
+/* ============================================================
+   2. DISEGNO CARTE — stile napoletano
+   ============================================================ */
+function emblem(suit, cx, cy, scale, flip){
+  const S=SUITS[suit], c=S.hex, d=S.dark;
+  const rot = flip ? 180 : 0;
+  const g = `translate(${cx},${cy}) rotate(${rot}) scale(${scale}) translate(-20,-20)`;
+
+  if(suit==='denari'){
+    return `<g transform="${g}">
+      <circle cx="20" cy="20" r="18" fill="${c}"/>
+      <circle cx="20" cy="20" r="18" fill="none" stroke="${d}" stroke-width="1.8"/>
+      <circle cx="20" cy="20" r="14.5" fill="none" stroke="#F0DCA0" stroke-width="1.1" opacity=".8"/>
+      <circle cx="20" cy="20" r="11" fill="none" stroke="${d}" stroke-width="1.1"/>
+      <path d="M20 6 L23.4 16.6 L34 20 L23.4 23.4 L20 34 L16.6 23.4 L6 20 L16.6 16.6 Z" fill="#F5E3AE"/>
+      <path d="M20 11 L22 18 L29 20 L22 22 L20 29 L18 22 L11 20 L18 18 Z" fill="${d}"/>
+      <circle cx="20" cy="20" r="2.2" fill="#F5E3AE"/>
+    </g>`;
+  }
+  if(suit==='coppe'){
+    return `<g transform="${g}">
+      <path d="M20 1.5 l1.6 3.2 l-1.6 3 l-1.6 -3 z" fill="${c}"/>
+      <ellipse cx="20" cy="9.5" rx="12" ry="3.2" fill="${c}"/>
+      <ellipse cx="20" cy="9.5" rx="9" ry="2" fill="${d}" opacity=".55"/>
+      <path d="M8 10 h24 v3.5 a12 12.5 0 0 1 -24 0 z" fill="${c}"/>
+      <path d="M11 13 a9 9 0 0 0 5 8 a11 11 0 0 1 -5 -8 z" fill="#FFF" opacity=".25"/>
+      <rect x="17.5" y="23.5" width="5" height="3.5" rx="1" fill="${d}"/>
+      <rect x="18.6" y="26.5" width="2.8" height="5" fill="${c}"/>
+      <path d="M10 36.5 q0 -5 10 -5 q10 0 10 5 z" fill="${c}"/>
+      <ellipse cx="20" cy="36.5" rx="10" ry="1.8" fill="${d}"/>
+    </g>`;
+  }
+  if(suit==='spade'){
+    return `<g transform="${g}">
+      <path d="M20 1.2 L23.6 9.5 L23.6 25.5 L16.4 25.5 L16.4 9.5 Z" fill="${c}"/>
+      <path d="M20 1.2 L21.9 9.5 L21.9 25.5 L20 25.5 Z" fill="#FFFFFF" opacity=".3"/>
+      <path d="M16.4 22 h7.2 v1.4 h-7.2 z" fill="${d}" opacity=".35"/>
+      <path d="M6.8 30.2 q4 -5 13.2 -5 q9.2 0 13.2 5 q-4.5 -2.2 -13.2 -2.2 q-8.7 0 -13.2 2.2 z" fill="${d}"/>
+      <rect x="18.1" y="29" width="3.8" height="6.4" rx="1.3" fill="${d}"/>
+      <path d="M18.1 31 h3.8 M18.1 33 h3.8" stroke="${c}" stroke-width=".8" opacity=".7"/>
+      <circle cx="20" cy="37" r="3.2" fill="${d}"/>
+      <circle cx="20" cy="37" r="1.3" fill="${c}"/>
+    </g>`;
+  }
+  return `<g transform="${g}">
+    <path d="M15 8.5 q5 -6.5 10 0 l-1.5 26.5 q-3.5 3 -7 0 z" fill="${c}" stroke="${d}" stroke-width="1.5" stroke-linejoin="round"/>
+    <ellipse cx="20" cy="7.8" rx="5.1" ry="2.8" fill="${c}" stroke="${d}" stroke-width="1.4"/>
+    <path d="M23.6 13.5 q5 -1.2 7 -3.8 q-0.6 4.6 -6.6 6 z" fill="${c}" stroke="${d}" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M16.3 22.5 q-5 -1.2 -7 -3.8 q0.6 4.6 6.6 6 z" fill="${c}" stroke="${d}" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M22.9 29.5 q4.5 -1 6.3 -3.4 q-0.5 4.2 -6 5.4 z" fill="${c}" stroke="${d}" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M18.4 12.5 q1.3 10 0.7 20.5" stroke="${d}" stroke-width="1.1" fill="none" opacity=".55"/>
+    <path d="M21.7 12.5 q0.8 10 0.4 20.5" stroke="${d}" stroke-width="1" fill="none" opacity=".4"/>
+    <ellipse cx="20" cy="35" rx="3.6" ry="2" fill="${d}"/>
+  </g>`;
+}
+
+function figure(rank, suit){
+  const S=SUITS[suit], c=S.hex, d=S.dark;
+  if(rank===8){ // Fante — paggio in piedi
+    return `<g>
+      <path d="M40 78 q10 -9 20 0 q-10 -4 -20 0 z" fill="${d}"/>
+      <circle cx="50" cy="86" r="8.5" fill="${c}"/>
+      <path d="M35 122 q1 -22 15 -26 q14 4 15 26 z" fill="${c}"/>
+      <path d="M50 96 v26" stroke="#F6F0DF" stroke-width="1.6" opacity=".5"/>
+      <path d="M35 122 q15 -6 30 0" stroke="${d}" stroke-width="1.6" fill="none"/>
+    </g>`;
+  }
+  if(rank===9){ // Cavallo — cavallo e cavaliere
+    return `<g>
+      <path d="M32 122 q2 -20 14 -26 l3 -11 q2 -7 9 -7 q5 0 4.6 5.5 l-2 10 q11 8 11 28.5 z" fill="${c}"/>
+      <path d="M57 78 q7 -5 9 -13 l3 6 q6 -3 7 -8 q3 15 -10 21 z" fill="${d}"/>
+      <circle cx="53.5" cy="76" r="2" fill="#F6F0DF"/>
+      <path d="M40 104 q12 -5 24 0" stroke="${d}" stroke-width="1.6" fill="none"/>
+    </g>`;
+  }
+  return `<g>  <!-- Re -->
+    <path d="M35 76 l3.5 -14 l6 8 l5.5 -11 l5.5 11 l6 -8 l3.5 14 z" fill="${d}"/>
+    <circle cx="41" cy="63" r="2" fill="${c}"/><circle cx="50" cy="59" r="2" fill="${c}"/><circle cx="59" cy="63" r="2" fill="${c}"/>
+    <circle cx="50" cy="87" r="8.5" fill="${c}"/>
+    <path d="M33 122 q1 -22 17 -26 q16 4 17 26 z" fill="${c}"/>
+    <path d="M50 97 v25" stroke="#F6F0DF" stroke-width="1.6" opacity=".5"/>
+  </g>`;
+}
+
+const PIPS = {
+  1:[[50,70]],
+  2:[[50,40],[50,100]],
+  3:[[50,36],[50,70],[50,104]],
+  4:[[34,42],[66,42],[34,98],[66,98]],
+  5:[[34,40],[66,40],[50,70],[34,100],[66,100]],
+  6:[[34,36],[66,36],[34,70],[66,70],[34,104],[66,104]],
+  7:[[34,34],[66,34],[34,68],[66,68],[50,51],[34,102],[66,102]]
+};
+
+function cardSVG(card, widthPx){
+  const S=SUITS[card.suit];
+  const w = widthPx || 60;
+  const h = Math.round(w*1.4);
+  let body='';
+  if(card.rank<=7){
+    let size;
+    if(card.rank===1) size=1.25;
+    else if(card.rank<=3) size=0.74;
+    else if(card.rank===7) size=0.53;
+    else size=0.58;
+    body = PIPS[card.rank].map(p=>emblem(card.suit,p[0],p[1],size, p[1]>72)).join('');
+  } else {
+    body = `<rect x="18" y="48" width="64" height="80" rx="7" fill="${S.hex}" opacity=".07"/>`
+         + emblem(card.suit, 50, 28, 0.7)
+         + figure(card.rank, card.suit)
+         + `<text x="50" y="133" font-family="Cinzel, serif" font-size="9" font-weight="600"
+              fill="${S.dark}" text-anchor="middle" letter-spacing="1">${FIGURE_NAME[card.rank]}</text>`;
+  }
+  return `<svg viewBox="0 0 100 140" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1.5" y="1.5" width="97" height="137" rx="8" fill="#F7F1E0" stroke="#B9A377" stroke-width="2"/>
+    <rect x="5.5" y="5.5" width="89" height="129" rx="5" fill="none" stroke="${S.hex}" stroke-width="1.6" opacity=".7"/>
+    <rect x="8.5" y="8.5" width="83" height="123" rx="3" fill="none" stroke="${S.hex}" stroke-width=".7" opacity=".4"/>
+    <text x="14" y="24" font-family="Cinzel, serif" font-size="15" font-weight="700" fill="${S.dark}">${card.rank}</text>
+    <text x="86" y="116" font-family="Cinzel, serif" font-size="15" font-weight="700" fill="${S.dark}"
+      text-anchor="middle" transform="rotate(180 86 116)">${card.rank}</text>
+    ${body}
+  </svg>`;
+}
+
+/* ============================================================
+   2. MOTORE DI GIOCO
+   Le stesse regole valgono sia contro il computer che online.
+   Il motore non disegna niente: riceve una partita `g`, l'ora
+   attuale, e fa avanzare il gioco. Online lo esegue l'host.
+   ============================================================ */
+const HAND_SEQUENCE = [1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1];
+const STRENGTH_NORMAL   = {1:10,3:9,10:8,9:7,8:6,7:5,6:4,5:3,4:2,2:1};
+const STRENGTH_TRESETTE = {3:10,2:9,1:8,10:7,9:6,8:5,7:4,6:3,5:2,4:1};
+const SPEEDS = {slow:{bid:1900,play:2100,trick:2800}, normal:{bid:1250,play:1450,trick:2000}, fast:{bid:550,play:650,trick:1100}};
+let speedKey = 'normal';
+
+const TURN_MS       = 15000;  // tempo per scommettere o giocare, online
+const BOT_MS        = 1300;   // pausa dei giocatori computer, online
+const TRICK_HOLD    = 2400;   // quanto resta visibile la presa, online
+const HAND_HOLD     = 8000;   // pausa tra una mano e l'altra, online
+
+const strengthMap = hs => hs===8 ? STRENGTH_TRESETTE : STRENGTH_NORMAL;
+
+function freshDeck(){
+  const d=[];
+  SUIT_KEYS.forEach(s=>{ for(let r=1;r<=10;r++) d.push({suit:s,rank:r}); });
+  for(let i=d.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [d[i],d[j]]=[d[j],d[i]]; }
+  return d;
+}
+
+function newGame(names, isBot, online){
+  const n = names.length;
+  const g = {
+    n, names:names.slice(), isBot:isBot.slice(), absent:names.map(()=>false),
+    online:!!online,
+    totals:names.map(()=>0),
+    dealer:0, handIndex:0, handSize:1,
+    hands:[], trump:null, trumpSuit:null,
+    bids:[], tricks:[], bidOrder:[], bidPos:0,
+    leader:0, trick:[], lastWinner:null,
+    phase:'bidding', turnPlayer:0,
+    actAt:null, deadline:null, holdUntil:null
+  };
+  dealHand(g, Date.now());
+  return g;
+}
+
+function dealHand(g, now){
+  g.handSize = HAND_SEQUENCE[g.handIndex];
+  const deck = freshDeck();
+  g.hands = [];
+  for(let p=0;p<g.n;p++) g.hands.push(deck.splice(0,g.handSize));
+  if(g.handSize<=7){ g.trump = deck.splice(0,1)[0]; g.trumpSuit = g.trump.suit; }
+  else { g.trump=null; g.trumpSuit=null; }
+  g.hands.forEach(sortHand);
+  g.bids   = new Array(g.n).fill(null);
+  g.tricks = new Array(g.n).fill(0);
+  g.bidOrder = [];
+  for(let i=1;i<=g.n;i++) g.bidOrder.push((g.dealer+i)%g.n);
+  g.bidPos = 0;
+  g.leader = g.bidOrder[0];
+  g.trick = [];
+  g.lastWinner = null;
+  g.holdUntil = null;
+  g.phase = 'bidding';
+  startTurn(g, now);
+}
+
+function sortHand(h){
+  const o={denari:0,coppe:1,spade:2,bastoni:3};
+  h.sort((a,b)=>o[a.suit]-o[b.suit] || b.rank-a.rank);
+}
+
+/* --- chi deve agire, e con quanto tempo --- */
+const autoFor = (g,p) => g.isBot[p] || g.absent[p];
+
+function startTurn(g, now){
+  const p = g.phase==='bidding' ? g.bidOrder[g.bidPos] : nextToPlay(g);
+  g.turnPlayer = p;
+  g.holdUntil = null;
+  if(autoFor(g,p)){
+    g.actAt = now + (g.online ? BOT_MS : SPEEDS[speedKey][g.phase==='bidding'?'bid':'play']);
+    g.deadline = null;
+  } else if(g.online){
+    g.actAt = null;
+    g.deadline = now + TURN_MS;
+  } else {
+    g.actAt = null; g.deadline = null;   // offline: l'umano non ha fretta
+  }
+}
+
+/* --- regole --- */
+function forbiddenBid(g,p){
+  if(g.bidOrder[g.bidOrder.length-1]!==p) return null;
+  const sum = g.bids.reduce((a,b)=>a+(b===null?0:b),0);
+  const f = g.handSize - sum;
+  return (f>=0 && f<=g.handSize) ? f : null;
+}
+
+const nextToPlay = g => (g.leader + g.trick.length) % g.n;
+
+function legalCards(g,p){
+  const hand = g.hands[p];
+  if(!g.trick.length) return hand.slice();
+  const led = g.trick[0].card.suit;
+  const follow = hand.filter(c=>c.suit===led);
+  return follow.length ? follow : hand.slice();
+}
+
+function winnerOfTrick(g, trick){
+  const led = trick[0].card.suit, map = strengthMap(g.handSize);
+  const isT = c => g.handSize!==8 && g.trumpSuit && c.suit===g.trumpSuit;
+  let best = trick[0];
+  for(let i=1;i<trick.length;i++){
+    const t = trick[i];
+    if(isT(t.card) && !isT(best.card)){ best=t; continue; }
+    if(isT(t.card) && isT(best.card)){ if(map[t.card.rank]>map[best.card.rank]) best=t; continue; }
+    if(!isT(t.card) && isT(best.card)) continue;
+    if(t.card.suit===led && best.card.suit===led){ if(map[t.card.rank]>map[best.card.rank]) best=t; }
+    else if(t.card.suit===led && best.card.suit!==led) best=t;
+  }
+  return best.p;
+}
+
+/* --- scelte del computer --- */
+function botBid(g,p){
+  const map = strengthMap(g.handSize);
+  let est=0;
+  g.hands[p].forEach(c=>{
+    const isT = g.handSize!==8 && g.trumpSuit && c.suit===g.trumpSuit;
+    let pw = map[c.rank]/10; if(isT) pw += 0.35;
+    if(pw>=0.85) est+=1; else if(pw>=0.6) est+=0.5;
+  });
+  let bid = Math.max(0, Math.min(g.handSize, Math.round(est)));
+  const f = forbiddenBid(g,p);
+  if(f!==null && bid===f) bid = bid<g.handSize ? bid+1 : bid-1;
+  return bid;
+}
+
+function botCard(g,p){
+  const legal = legalCards(g,p), map = strengthMap(g.handSize);
+  const needs = g.tricks[p] < (g.bids[p]||0);
+  const wins = legal.filter(c=>winnerOfTrick(g, g.trick.concat([{p,card:c}]))===p);
+  if(needs && wins.length){ wins.sort((a,b)=>map[a.rank]-map[b.rank]); return wins[0]; }
+  if(!needs){
+    const losers = legal.filter(c=>winnerOfTrick(g, g.trick.concat([{p,card:c}]))!==p);
+    if(losers.length){ losers.sort((a,b)=>map[a.rank]-map[b.rank]); return losers[0]; }
+  }
+  return legal.slice().sort((a,b)=>map[a.rank]-map[b.rank])[0];
+}
+
+/* --- se scade il tempo: scelta a caso tra quelle consentite --- */
+function randomBid(g,p){
+  const f = forbiddenBid(g,p);
+  const opts=[];
+  for(let v=0;v<=g.handSize;v++) if(v!==f) opts.push(v);
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+function randomCard(g,p){
+  const legal = legalCards(g,p);
+  return legal[Math.floor(Math.random()*legal.length)];
+}
+
+/* --- azioni --- */
+function canBid(g,p,v){
+  return g.phase==='bidding' && g.bidOrder[g.bidPos]===p
+      && Number.isInteger(v) && v>=0 && v<=g.handSize && forbiddenBid(g,p)!==v;
+}
+function doBid(g,p,v,now){
+  g.bids[p]=v; g.bidPos++;
+  if(g.bidPos>=g.n){ g.phase='playing'; g.leader=g.bidOrder[0]; }
+  startTurn(g,now);
+}
+
+function canPlay(g,p,card){
+  return g.phase==='playing' && nextToPlay(g)===p && card
+      && legalCards(g,p).some(c=>c.suit===card.suit && c.rank===card.rank);
+}
+function doPlay(g,p,card,now){
+  const hand=g.hands[p];
+  const i=hand.findIndex(c=>c.suit===card.suit && c.rank===card.rank);
+  if(i===-1) return;
+  hand.splice(i,1);
+  g.trick.push({p, card:{suit:card.suit, rank:card.rank}});
+  if(g.trick.length===g.n){
+    const w = winnerOfTrick(g,g.trick);
+    g.tricks[w]++;
+    g.lastWinner = w;
+    g.phase='trickEnd';
+    g.actAt=null; g.deadline=null;
+    g.holdUntil = now + (g.online ? TRICK_HOLD : SPEEDS[speedKey].trick);
+  } else {
+    startTurn(g,now);
+  }
+}
+
+function finishTrick(g,now){
+  g.leader = g.lastWinner;
+  g.trick = [];
+  g.lastWinner = null;
+  if(g.hands.every(h=>h.length===0)) scoreHand(g,now);
+  else { g.phase='playing'; startTurn(g,now); }
+}
+
+function scoreHand(g,now){
+  for(let p=0;p<g.n;p++){
+    const b=g.bids[p], w=g.tricks[p];
+    g.totals[p] += (b===w) ? b+1 : -Math.abs(w-b);
+  }
+  g.phase='handEnd';
+  g.actAt=null; g.deadline=null;
+  g.holdUntil = g.online ? now + HAND_HOLD : null;   // offline aspetta il bottone
+}
+
+function nextHand(g,now){
+  g.handIndex++;
+  if(g.handIndex>=HAND_SEQUENCE.length){
+    g.phase='gameEnd'; g.holdUntil=null; g.actAt=null; g.deadline=null;
+    return;
+  }
+  g.dealer = (g.dealer+1)%g.n;
+  dealHand(g,now);
+}
+
+/* --- il battito del motore: restituisce true se qualcosa è cambiato --- */
+function tick(g, now){
+  if(g.phase==='bidding' || g.phase==='playing'){
+    const p = g.turnPlayer;
+    if(g.actAt!==null && now>=g.actAt){
+      if(g.phase==='bidding') doBid(g,p,botBid(g,p),now);
+      else doPlay(g,p,botCard(g,p),now);
+      return true;
+    }
+    if(g.deadline!==null && now>=g.deadline){
+      if(g.phase==='bidding') doBid(g,p,randomBid(g,p),now);
+      else doPlay(g,p,randomCard(g,p),now);
+      return true;
+    }
+    return false;
+  }
+  if(g.phase==='trickEnd' && g.holdUntil!==null && now>=g.holdUntil){ finishTrick(g,now); return true; }
+  if(g.phase==='handEnd'  && g.holdUntil!==null && now>=g.holdUntil){ nextHand(g,now);   return true; }
+  return false;
+}
+
+/* se un giocatore cade o rientra, i tempi del turno vanno riadattati */
+function refreshTurnTiming(g, now){
+  if(g.phase!=='bidding' && g.phase!=='playing') return false;
+  const p = g.turnPlayer;
+  if(autoFor(g,p) && g.actAt===null){ g.actAt = now + BOT_MS; g.deadline=null; return true; }
+  if(!autoFor(g,p) && g.actAt!==null){ g.actAt = null; g.deadline = now + TURN_MS; return true; }
+  return false;
+}
+
+/* ============================================================
+   3. RETE — Firebase Realtime Database
+   Questa pagina, una volta pubblicata, funziona per chiunque
+   apra il link: non serve nessun account Claude. I dati della
+   partita vivono nel database Firebase creato per questo gioco.
+   ============================================================ */
+const FIREBASE_URL = 'https://sali-e-scendi-default-rtdb.europe-west1.firebasedatabase.app';
+
+function fbPath(key){ return key.split(':').join('/'); }
+
+async function fbGet(key){
+  const url = `${FIREBASE_URL}/${fbPath(key)}.json?_=${Date.now()}`;
+  const res = await fetch(url, {cache: 'no-store'});
+  if(!res.ok) throw new Error('lettura fallita (' + res.status + ')');
+  const data = await res.json();
+  if(data === null) throw new Error('non trovata');
+  return {key, value: data};
+}
+async function fbSet(key, value){
+  const res = await fetch(`${FIREBASE_URL}/${fbPath(key)}.json`, {
+    method: 'PUT', body: JSON.stringify(value), cache: 'no-store'
+  });
+  if(!res.ok) throw new Error('scrittura fallita (' + res.status + ')');
+  return {key, value};
+}
+async function fbDelete(key){
+  const res = await fetch(`${FIREBASE_URL}/${fbPath(key)}.json`, {method:'DELETE', cache:'no-store'});
+  if(!res.ok) throw new Error('cancellazione fallita (' + res.status + ')');
+  return {deleted:true};
+}
+
+let lastError = '';
+function errText(e){
+  if(!e) return 'errore senza descrizione';
+  if(typeof e === 'string') return e;
+  return e.message || String(e);
+}
+
+/* prova vera: scrive e rilegge un valore, così scopriamo subito
+   se il database è raggiungibile e le regole permettono l'accesso */
+async function ensureStorage(maxWait){
+  const t0 = Date.now(), limit = maxWait || 9000;
+  while(Date.now() - t0 < limit){
+    try{
+      const probe = 'x' + Date.now();
+      await fbSet('sas:probe', probe);
+      const r = await fbGet('sas:probe');
+      if(r.value === probe){ lastError=''; return true; }
+      lastError = 'la lettura di prova non corrisponde';
+    }catch(e){ lastError = errText(e); }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return false;
+}
+
+async function runDiagnostics(){
+  const out = [];
+  out.push('indirizzo: ' + FIREBASE_URL);
+  try{ await fbSet('sas:diag', 'ciao'); out.push('1. scrittura: OK'); }
+  catch(e){ out.push('1. scrittura: FALLITA — ' + errText(e)); }
+  try{ const r = await fbGet('sas:diag'); out.push('2. lettura: ' + (r.value==='ciao'?'OK':'valore inatteso: '+r.value)); }
+  catch(e){ out.push('2. lettura: FALLITA — ' + errText(e)); }
+  return out.join('<br>');
+}
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // niente I e O, si confondono
+const kState  = c => `sas:${c}:state`;
+const kPlayer = (c,id) => `sas:${c}:p:${id}`;
+const kJoin   = c => `sas:${c}:join`;
+const POLL_MS = 1800;
+
+const NET = {
+  code:null, id:null, name:'Giocatore', host:false, ready:false,
+  room:null, at:0, seq:0, action:null, sentSig:null,
+  loop:null, status:'', sweep:0, error:''
+};
+
+const randId = () => Math.random().toString(36).slice(2,10);
+function randCode(){
+  let s=''; for(let i=0;i<4;i++) s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
+  return s;
+}
+
+async function readKey(k){
+  try{ const r = await fbGet(k); return (r && r.value !== undefined) ? r.value : null; }
+  catch(e){ return null; }   // chiave inesistente: non è un errore
+}
+async function writeKey(k, obj){ await fbSet(k, obj); }
+
+async function codeIsFree(code){ return !(await readKey(kState(code))); }
+
+async function writeState(now){
+  NET.room.updatedAt = now || Date.now();
+  await writeKey(kState(NET.code), NET.room);
+  NET.at = Date.now();
+}
+
+let lastMeWrite = 0, lastMeSeq = -1;
+async function writeMe(force){
+  const now = Date.now();
+  if(!force && NET.action && NET.action.seq === lastMeSeq && (now - lastMeWrite) < 5000) return;
+  lastMeWrite = now; lastMeSeq = NET.action ? NET.action.seq : -1;
+  await writeKey(kPlayer(NET.code, NET.id), {id:NET.id, name:NET.name, ts:now, ready:NET.ready, action:NET.action});
+}
+
+/* --- il campanello: chi entra si annuncia qui, l'host legge solo questo --- */
+async function ringDoorbell(){
+  const now = Date.now();
+  const cur = await readKey(kJoin(NET.code));
+  let list = (cur && Array.isArray(cur.list)) ? cur.list : [];
+  list = list.filter(x => x && x.id !== NET.id && (now - x.ts) < 25000);
+  list.push({id:NET.id, name:NET.name, ts:now});
+  if(list.length > 8) list = list.slice(-8);
+  await writeKey(kJoin(NET.code), {list});
+}
+
+async function netCreate(){
+  NET.id = randId(); NET.host = true; NET.ready = true;
+  let code = randCode(), tries = 0;
+  while(!(await codeIsFree(code)) && tries++ < 6) code = randCode();
+  NET.code = code;
+  NET.room = {
+    v:3, code, hostId:NET.id, updatedAt:Date.now(), status:'lobby',
+    maxPlayers:4, applied:{},
+    seats:[{id:NET.id, name:NET.name, bot:false, ready:true, connected:true}],
+    game:null
+  };
+  await writeKey(kJoin(code), {list:[]});
+  await writeMe(true);
+  await writeState();
+  startLoop();
+}
+
+async function netJoin(code){
+  NET.id = randId(); NET.host = false; NET.ready = false; NET.code = code;
+  const room = await readKey(kState(code));
+  if(!room) throw new Error('stanza non trovata');
+  NET.room = room; NET.at = Date.now();
+  await writeMe(true);
+  await ringDoorbell();
+  startLoop();
+}
+
+function startLoop(){
+  stopLoop();
+  NET.loop = setInterval(cycle, POLL_MS);
+  cycle();
+}
+function stopLoop(){ if(NET.loop){ clearInterval(NET.loop); NET.loop=null; } }
+
+async function netLeave(){
+  stopLoop();
+  try{ if(NET.code && NET.id) await fbDelete(kPlayer(NET.code, NET.id)); }catch(e){}
+  NET.code=null; NET.room=null; NET.host=false; NET.ready=false; NET.action=null; NET.sentSig=null;
+}
+
+async function cycle(){
+  if(!NET.code) return;
+  try{
+    if(NET.host) await hostCycle(); else await guestCycle();
+    NET.status = 'ok';
+  }catch(e){
+    NET.status = 'offline';
+    NET.error = errText(e);
+    lastError = NET.error;
+    renderAll();
+  }
+}
+
+async function readSeatPlayers(){
+  const out = [];
+  for(const s of NET.room.seats){
+    if(s.bot) continue;
+    const info = await readKey(kPlayer(NET.code, s.id));
+    if(info) out.push(info);
+  }
+  return out;
+}
+
+async function hostCycle(){
+  const now = Date.now();
+  const room = NET.room;
+  let dirty = false;
+  NET.sweep++;
+
+  if(NET.sweep % 5 === 0){
+    const s = await readKey(kState(NET.code));
+    if(s && s.hostId !== NET.id && s.updatedAt > room.updatedAt){
+      NET.host = false; NET.room = s; NET.at = now; renderAll(); return;
+    }
+  }
+
+  const fullSweep = (room.status === 'lobby') || (NET.sweep % 3 === 0);
+  let infos = [];
+  if(fullSweep){
+    infos = await readSeatPlayers();
+  } else {
+    const g = room.game;
+    if(g && (g.phase === 'bidding' || g.phase === 'playing')){
+      const seat = room.seats[g.turnPlayer];
+      if(seat && !seat.bot){
+        const info = await readKey(kPlayer(NET.code, seat.id));
+        if(info) infos.push(info);
+      }
+    }
+  }
+  const byId = {}; infos.forEach(i => byId[i.id] = i);
+  const alive = i => i && (now - i.ts) < 20000;
+
+  if(fullSweep){
+    const bell = await readKey(kJoin(NET.code));
+    const reqs = (bell && Array.isArray(bell.list)) ? bell.list : [];
+    for(const r of reqs){
+      if(!r || (now - r.ts) > 25000) continue;
+      if(room.seats.some(s => s.id === r.id)) continue;
+      if(room.status === 'lobby'){
+        if(room.seats.length >= room.maxPlayers) continue;
+        room.seats.push({id:r.id, name:r.name, bot:false, ready:false, connected:true});
+        dirty = true;
+      } else {
+        const seat = room.seats.find(s => !s.bot && s.connected === false && s.name === r.name);
+        if(seat){ seat.id = r.id; seat.connected = true; dirty = true; }
+      }
+    }
+  }
+
+  if(room.status === 'lobby'){
+    room.seats.forEach(s => {
+      if(s.bot) return;
+      if(s.id === NET.id){
+        if(s.ready !== NET.ready){ s.ready = NET.ready; dirty = true; }
+        if(!s.connected){ s.connected = true; dirty = true; }
+        return;
+      }
+      const i = byId[s.id];
+      const conn = alive(i), rd = i ? !!i.ready : false, nm = i ? i.name : s.name;
+      if(s.connected !== conn || s.ready !== rd || s.name !== nm){ s.connected=conn; s.ready=rd; s.name=nm; dirty=true; }
+    });
+    const before = room.seats.length;
+    room.seats = room.seats.filter(s => s.bot || s.id === NET.id || !byId[s.id] || (now - byId[s.id].ts) < 35000);
+    if(room.seats.length !== before) dirty = true;
+
+  } else {
+    if(fullSweep){
+      room.seats.forEach((s, idx) => {
+        if(s.bot) return;
+        const conn = (s.id === NET.id) ? true : alive(byId[s.id]);
+        if(s.connected !== conn){ s.connected = conn; dirty = true; }
+        if(room.game) room.game.absent[idx] = !conn;
+      });
+      if(room.game && refreshTurnTiming(room.game, now)) dirty = true;
+    }
+
+    infos.forEach(i => {
+      const a = i.action; if(!a) return;
+      if((room.applied[i.id] || 0) >= a.seq) return;
+      room.applied[i.id] = a.seq;
+      const seat = room.seats.findIndex(s => s.id === i.id);
+      if(seat >= 0 && room.game) applyRemote(room.game, seat, a, now);
+      dirty = true;
+    });
+
+    let guard = 0;
+    while(room.game && tick(room.game, now)){ dirty = true; if(guard++ > 300) break; }
+    if(room.game && room.game.phase === 'gameEnd' && room.status !== 'ended'){ room.status = 'ended'; dirty = true; }
+  }
+
+  await writeMe();
+  if(dirty || (now - room.updatedAt) > 4000) await writeState(now);
+  renderAll();
+}
+
+async function guestCycle(){
+  const now = Date.now();
+  await writeMe();
+  const room = await readKey(kState(NET.code));
+  if(!room) throw new Error('stanza sparita');
+  NET.room = room;
+  NET.at = now;
+
+  if(!room.seats.some(s => s.id === NET.id)) await ringDoorbell();
+
+  if((now - room.updatedAt) > 14000){
+    const cand = room.seats.filter(s => !s.bot && s.connected !== false && s.id !== room.hostId)[0];
+    if(cand && cand.id === NET.id){
+      room.hostId = NET.id; NET.host = true;
+      await writeState(Date.now());
+    }
+  }
+  renderAll();
+}
+
+function applyRemote(g, seat, a, now){
+  if(a.kind === 'bid'  && canBid(g, seat, a.value))  doBid(g, seat, a.value, now);
+  else if(a.kind === 'play' && canPlay(g, seat, a.value)) doPlay(g, seat, a.value, now);
+}
+
+function hostAddBot(){
+  const room = NET.room;
+  if(room.seats.length >= room.maxPlayers) return;
+  const n = room.seats.filter(s => s.bot).length + 1;
+  room.seats.push({id:'bot:'+randId(), name:'Computer '+n, bot:true, ready:true, connected:true});
+  writeState(); renderAll();
+}
+function hostRemoveBot(){
+  const room = NET.room;
+  for(let i = room.seats.length-1; i >= 0; i--){ if(room.seats[i].bot){ room.seats.splice(i,1); break; } }
+  writeState(); renderAll();
+}
+function hostSetMax(v){
+  const room = NET.room;
+  if(v < room.seats.length) return;
+  room.maxPlayers = v; writeState(); renderAll();
+}
+function hostStart(){
+  const room = NET.room;
+  if(room.seats.length !== room.maxPlayers) return;
+  if(!room.seats.every(s => s.ready)) return;
+  room.game = newGame(room.seats.map(s=>s.name), room.seats.map(s=>!!s.bot), true);
+  room.status = 'playing';
+  room.applied = {};
+  writeState(); renderAll();
+}
+function hostBackToLobby(){
+  const room = NET.room;
+  room.status = 'lobby'; room.game = null; room.applied = {};
+  room.seats.forEach(s => { if(!s.bot) s.ready = (s.id === NET.id); });
+  NET.ready = true;
+  writeState(); renderAll();
+}
+
+/* ============================================================
+   4. SCHERMATE
+   ============================================================ */
+const BOT_NAMES = ['Nord','Est','Sud','Ovest'];
+let MODE = 'home';      // 'cpu' | 'online'
+let G = null;           // partita locale (contro il computer)
+let localLoop = null;
+
+const currentGame = () => MODE === 'cpu' ? G : (NET.room ? NET.room.game : null);
+function myPos(){
+  if(MODE === 'cpu') return 0;
+  if(!NET.room) return 0;
+  const i = NET.room.seats.findIndex(s => s.id === NET.id);
+  return i < 0 ? 0 : i;
+}
+const turnSig = g => `${g.phase}:${g.handIndex}:${g.bidPos}:${g.trick.length}`;
+
+function showScreen(id){
+  ['home','setupCpu','joinScreen','lobby','game'].forEach(s =>
+    document.getElementById(s).classList.toggle('hidden', s !== id));
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.add('hidden'), 2200);
+}
+
+/* --- partita contro il computer --- */
+function startLocalGame(n){
+  const names = ['Tu'], isBot = [false];
+  for(let i = 1; i < n; i++){ names.push(BOT_NAMES[i-1]); isBot.push(true); }
+  G = newGame(names, isBot, false);
+  MODE = 'cpu';
+  showScreen('game');
+  render();
+  clearInterval(localLoop);
+  localLoop = setInterval(() => { if(MODE === 'cpu' && G && tick(G, Date.now())) render(); }, 150);
+}
+
+/* --- disegno del tavolo --- */
+function seatPos(i, n, rx, ry){
+  const rad = (-90 + i*(360/n)) * Math.PI/180;
+  return {x: 50 + rx*Math.cos(rad), y: 50 + ry*Math.sin(rad)};
+}
+const presaLabel = k => k === 1 ? '1 presa fatta' : k + ' prese fatte';
+function handCardWidth(c){ if(c >= 8) return 48; if(c === 7) return 52; if(c >= 5) return 58; return 64; }
+
+function remainingMs(){
+  const g = currentGame();
+  if(!g || g.deadline === null || MODE !== 'online' || !NET.room) return null;
+  const atWrite = g.deadline - NET.room.updatedAt;
+  return Math.max(0, atWrite - (Date.now() - NET.at));
+}
+
+function renderAll(){
+  if(MODE !== 'online') return;
+  const room = NET.room;
+  if(!room) return;
+  if(room.status === 'lobby'){ showScreen('lobby'); renderLobby(); }
+  else { showScreen('game'); render(); }
+}
+
+function renderLobby(){
+  const room = NET.room;
+  document.getElementById('roomCode').textContent = room.code;
+  const list = document.getElementById('playerList');
+  list.innerHTML = '';
+  room.seats.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'player-row' + (s.id === NET.id ? ' me' : '');
+    const tag = s.bot ? '<span class="ptag bot">computer</span>'
+              : (s.connected === false ? '<span class="ptag off">assente</span>' : '');
+    row.innerHTML = `<span class="pname">${s.name}${s.id===room.hostId?' <span class="ptag host">host</span>':''} ${tag}</span>
+                     <span class="pready ${s.ready?'yes':'no'}">${s.ready?'pronto':'in attesa'}</span>`;
+    list.appendChild(row);
+  });
+  for(let i = room.seats.length; i < room.maxPlayers; i++){
+    const row = document.createElement('div');
+    row.className = 'player-row empty';
+    row.innerHTML = `<span class="pname">posto libero</span>`;
+    list.appendChild(row);
+  }
+
+  document.getElementById('lobbyCount').textContent = `${room.seats.length} di ${room.maxPlayers}`;
+  document.getElementById('hostBox').classList.toggle('hidden', !NET.host);
+  document.querySelectorAll('#maxChoice .choice').forEach(c =>
+    c.classList.toggle('active', parseInt(c.dataset.val,10) === room.maxPlayers));
+
+  const full = room.seats.length === room.maxPlayers;
+  const allReady = room.seats.every(s => s.ready);
+  const btn = document.getElementById('startOnlineBtn');
+  btn.disabled = !(full && allReady);
+  btn.textContent = !full ? `Mancano ${room.maxPlayers - room.seats.length} giocatori`
+                  : (!allReady ? 'In attesa dei pronto' : 'Inizia la partita');
+
+  const rb = document.getElementById('readyBtn');
+  rb.textContent = NET.ready ? 'Sono pronto ✓' : 'Metti pronto';
+  rb.classList.toggle('on', NET.ready);
+  document.getElementById('netStatus').textContent =
+    NET.status === 'offline' ? ('connessione persa: ' + String(NET.error||'').slice(0,50)) : 'collegato';
+}
+
+function render(){
+  const g = currentGame();
+  if(!g) return;
+  const n = g.n, me = myPos();
+
+  document.getElementById('handIdx').textContent = g.handIndex + 1;
+  document.getElementById('handSizeLbl').textContent =
+    g.handSize + (g.handSize === 1 ? ' carta' : ' carte') + (g.handSize === 8 ? ' · tre sette' : '');
+
+  const banner = document.getElementById('dealerBanner');
+  banner.innerHTML = g.dealer === me
+    ? `<span class="chip">MAZZIERE</span> Sei tu a dare le carte — parli per ultimo`
+    : `<span class="chip">MAZZIERE</span> Dà le carte ${g.names[g.dealer]} — parla per ultimo`;
+
+  const layer = document.getElementById('tableLayer');
+  layer.innerHTML = '';
+
+  const trump = document.createElement('div');
+  if(g.trump){ trump.className = 'trump-badge'; trump.innerHTML = `<div class="lbl">BRISCOLA</div>${cardSVG(g.trump, 62)}`; }
+  else { trump.className = 'trump-badge notrump'; trump.innerHTML = `SENZA<br>BRISCOLA`; }
+  layer.appendChild(trump);
+
+  for(let p = 0; p < n; p++){
+    const d = (p - me + n) % n;
+    const pos = seatPos(d, n, 40, 38);
+    const el = document.createElement('div');
+    const isTurn = (g.phase === 'bidding' || g.phase === 'playing') && g.turnPlayer === p;
+    el.className = 'seat' + (isTurn ? ' turn' : '') + (g.lastWinner === p ? ' won' : '');
+    el.style.left = pos.x + '%'; el.style.top = pos.y + '%';
+    const dTag = g.dealer === p ? `<span class="dealer-dot">M</span>` : '';
+    const aTag = g.absent[p] ? `<span class="dealer-dot off">assente</span>` : '';
+    const said = g.bids[p] !== null
+      ? `<span class="said">ha detto ${g.bids[p]}</span>`
+      : `<span class="said waiting">deve dire</span>`;
+    el.innerHTML = `<div class="nm">${g.names[p]}${dTag}${aTag}</div>${said}
+                    <div class="taken">${presaLabel(g.tricks[p])}</div>`;
+    layer.appendChild(el);
+  }
+
+  g.trick.forEach(t => {
+    const d = (t.p - me + n) % n;
+    const pos = seatPos(d, n, 21, 20);
+    const el = document.createElement('div');
+    el.className = 'played';
+    el.style.left = pos.x + '%'; el.style.top = pos.y + '%';
+    el.innerHTML = cardSVG(t.card, 42);
+    layer.appendChild(el);
+  });
+
+  const sm = document.getElementById('statusMsg');
+  if(g.phase === 'trickEnd'){
+    sm.textContent = g.lastWinner === me ? 'Prendi tu la mano' : `${g.names[g.lastWinner]} prende la mano`;
+  } else if(g.phase === 'bidding'){
+    sm.textContent = g.turnPlayer === me ? 'Tocca a te dire quante prese fai' : `${g.names[g.turnPlayer]} sta pensando…`;
+  } else if(g.phase === 'playing'){
+    sm.textContent = g.turnPlayer === me ? 'Tocca a te giocare' : `${g.names[g.turnPlayer]} sta giocando…`;
+  } else sm.textContent = '';
+
+  renderTimer();
+
+  const waiting = MODE === 'online' && NET.sentSig === turnSig(g);
+  const bp = document.getElementById('bidPanel');
+  const myBid = g.phase === 'bidding' && g.turnPlayer === me && !waiting;
+  bp.classList.toggle('hidden', !myBid);
+  if(myBid){
+    const f = forbiddenBid(g, me);
+    const opts = document.getElementById('bidOptions');
+    opts.innerHTML = '';
+    for(let v = 0; v <= g.handSize; v++){
+      const b = document.createElement('button');
+      b.className = 'bid-btn' + (v === f ? ' forbidden' : '');
+      b.textContent = v;
+      if(v !== f) b.onclick = () => actBid(v);
+      opts.appendChild(b);
+    }
+    const fn = document.getElementById('forbiddenNote');
+    if(f !== null){ fn.classList.remove('hidden');
+      fn.textContent = `Sei il mazziere: non puoi dire ${f}, le scommesse non possono sommare a ${g.handSize}.`;
+    } else fn.classList.add('hidden');
+  }
+
+  document.getElementById('myNameTag').innerHTML =
+    (MODE === 'cpu' ? 'Tu' : g.names[me]) + (g.dealer === me ? `<span class="dealer-dot">MAZZIERE</span>` : '');
+  document.getElementById('myBidInfo').textContent = g.bids[me] !== null
+    ? `Hai detto ${g.bids[me]} · ${presaLabel(g.tricks[me])}` : 'devi ancora dire';
+
+  const mh = document.getElementById('myHand');
+  mh.innerHTML = '';
+  const myTurn = g.phase === 'playing' && g.turnPlayer === me && !waiting;
+  const legal = myTurn ? legalCards(g, me).map(c => c.suit + c.rank) : [];
+  const hand = g.hands[me] || [];
+  const w = handCardWidth(hand.length);
+  const ov = hand.length >= 7 ? -5 : -3;
+  hand.forEach(c => {
+    const ok = !myTurn || legal.includes(c.suit + c.rank);
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (myTurn ? (ok ? ' playable' : ' blocked') : '');
+    slot.style.margin = `0 ${ov}px`;
+    slot.innerHTML = cardSVG(c, w);
+    if(myTurn && ok) slot.onclick = () => actPlay(c);
+    mh.appendChild(slot);
+  });
+
+  document.getElementById('gameNet').classList.toggle('hidden', MODE !== 'online');
+  if(MODE === 'online')
+    document.getElementById('gameNetTxt').textContent =
+      (NET.status === 'offline' ? '⚠ riconnessione…' : 'stanza ' + NET.code);
+
+  if(g.phase === 'handEnd') renderHandEnd(g, me); else document.getElementById('handOverlay').classList.add('hidden');
+  if(g.phase === 'gameEnd') renderEnd(g, me);     else document.getElementById('endOverlay').classList.add('hidden');
+}
+
+function renderTimer(){
+  const g = currentGame();
+  const bar = document.getElementById('timerBar');
+  const fill = document.getElementById('timerFill');
+  const rem = remainingMs();
+  const myTurnNow = g && (g.phase === 'bidding' || g.phase === 'playing') && g.turnPlayer === myPos();
+  if(!g || rem === null || !myTurnNow){ bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  const pct = Math.max(0, Math.min(100, rem / TURN_MS * 100));
+  fill.style.width = pct + '%';
+  fill.className = 'timer-fill' + (rem < 5000 ? ' urgent' : '');
+  document.getElementById('timerSecs').textContent = Math.ceil(rem/1000) + 's';
+}
+
+function actBid(v){
+  const g = currentGame(); if(!g) return;
+  const me = myPos();
+  if(!canBid(g, me, v)) return;
+  if(MODE === 'cpu'){ doBid(g, me, v, Date.now()); render(); return; }
+  NET.sentSig = turnSig(g);
+  sendAction('bid', v);
+}
+function actPlay(card){
+  const g = currentGame(); if(!g) return;
+  const me = myPos();
+  if(!canPlay(g, me, card)) return;
+  if(MODE === 'cpu'){ doPlay(g, me, card, Date.now()); render(); return; }
+  NET.sentSig = turnSig(g);
+  sendAction('play', {suit:card.suit, rank:card.rank});
+}
+function sendAction(kind, value){
+  NET.seq++;
+  NET.action = {seq:NET.seq, kind, value};
+  if(NET.host && NET.room.game){
+    NET.room.applied[NET.id] = NET.seq;
+    applyRemote(NET.room.game, myPos(), NET.action, Date.now());
+    writeState(); render();
+  } else {
+    writeMe(true).catch(()=>{});
+    render();
+  }
+}
+
+function renderHandEnd(g, me){
+  document.getElementById('handOverlaySub').textContent =
+    `Mano da ${g.handSize} ${g.handSize === 1 ? 'carta' : 'carte'} completata`;
+  const list = document.getElementById('handScoreList');
+  list.innerHTML = '';
+  g.names.forEach((name, p) => {
+    const b = g.bids[p], w = g.tricks[p], hit = b === w;
+    const row = document.createElement('div');
+    row.className = 'score-row' + (p === me ? ' me' : '');
+    row.innerHTML = `<span>${name}<br><span style="opacity:.65;font-size:11.5px;">ha detto ${b} · ${presaLabel(w)}</span></span>
+      <span style="display:flex;align-items:center;gap:9px;">
+        <span class="delta ${hit ? 'plus' : 'minus'}">${hit ? '+'+(b+1) : '−'+Math.abs(w-b)}</span>
+        <b>${g.totals[p]}</b></span>`;
+    list.appendChild(row);
+  });
+  const btn = document.getElementById('continueBtn');
+  if(MODE === 'cpu'){ btn.classList.remove('hidden'); btn.textContent = 'Continua'; }
+  else {
+    btn.classList.add('hidden');
+    const rem = g.holdUntil ? Math.max(0, Math.ceil((g.holdUntil - NET.room.updatedAt - (Date.now()-NET.at))/1000)) : 0;
+    document.getElementById('handOverlaySub').textContent += ` · prossima mano tra ${rem}s`;
+  }
+  document.getElementById('handOverlay').classList.remove('hidden');
+}
+
+function renderEnd(g, me){
+  const rows = g.names.map((name,p)=>({name, total:g.totals[p], p})).sort((a,b)=>b.total-a.total);
+  document.getElementById('endTitle').textContent =
+    rows[0].p === me ? 'Hai vinto la partita' : `Vince ${rows[0].name}`;
+  const list = document.getElementById('finalScoreList');
+  list.innerHTML = '';
+  rows.forEach((r,i) => {
+    const row = document.createElement('div');
+    row.className = 'score-row' + (r.p === me ? ' me' : '');
+    row.innerHTML = `<span>${i+1}. ${r.name}</span><b>${r.total}</b>`;
+    list.appendChild(row);
+  });
+  const rb = document.getElementById('restartBtn');
+  if(MODE === 'cpu'){ rb.textContent = 'Nuova partita'; rb.classList.remove('hidden'); }
+  else { rb.textContent = 'Torna alla stanza'; rb.classList.toggle('hidden', !NET.host); }
+  document.getElementById('endOverlay').classList.remove('hidden');
+}
+
+/* ============================================================
+   5. CONTROLLI
+   ============================================================ */
+let chosenPlayers = 4;
+function bindChoice(id, cb){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('click', e => {
+    const c = e.target.closest('.choice'); if(!c) return;
+    if(id !== 'maxChoice'){
+      el.querySelectorAll('.choice').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+    }
+    cb(c.dataset.val);
+  });
+}
+bindChoice('playerChoice', v => chosenPlayers = parseInt(v,10));
+bindChoice('speedChoice', v => { speedKey = v; syncSpeed(); });
+bindChoice('speedChoiceGame', v => { speedKey = v; syncSpeed(); });
+bindChoice('maxChoice', v => { if(NET.host) hostSetMax(parseInt(v,10)); });
+function syncSpeed(){
+  ['speedChoice','speedChoiceGame'].forEach(id => {
+    const el = document.getElementById(id); if(!el) return;
+    el.querySelectorAll('.choice').forEach(c => c.classList.toggle('active', c.dataset.val === speedKey));
+  });
+}
+
+const nameInput = document.getElementById('nameInput');
+function grabName(){
+  const v = (nameInput.value || '').trim().slice(0,14);
+  NET.name = v || 'Giocatore';
+  return NET.name;
+}
+
+document.getElementById('goCpuBtn').onclick = () => { MODE='cpu'; showScreen('setupCpu'); };
+document.getElementById('startBtn').onclick = () => startLocalGame(chosenPlayers);
+document.getElementById('backHome1').onclick = () => showScreen('home');
+document.getElementById('backHome2').onclick = () => showScreen('home');
+
+document.getElementById('goCreateBtn').onclick = async () => {
+  grabName();
+  toast('Creo la stanza…');
+  if(!(await ensureStorage(6000))){ await showNetProblem(); return; }
+  MODE = 'online';
+  try{ await netCreate(); showScreen('lobby'); renderLobby(); }
+  catch(e){ MODE='home'; await showNetProblem(e); }
+};
+document.getElementById('goJoinBtn').onclick = async () => {
+  grabName();
+  showScreen('joinScreen');
+  document.getElementById('codeInput').value = '';
+};
+document.getElementById('joinBtn').onclick = async () => {
+  const code = (document.getElementById('codeInput').value || '').trim().toUpperCase();
+  if(code.length !== 4){ toast('Il codice ha 4 lettere'); return; }
+  grabName(); MODE = 'online';
+  toast('Entro nella stanza…');
+  try{ await netJoin(code); showScreen('lobby'); renderLobby(); }
+  catch(e){ MODE='home'; await showNetProblem(e); }
+};
+document.getElementById('readyBtn').onclick = () => {
+  NET.ready = !NET.ready;
+  if(NET.host){ const s = NET.room.seats.find(x => x.id === NET.id); if(s) s.ready = NET.ready; writeState(); }
+  else writeMe(true).catch(()=>{});
+  renderLobby();
+};
+document.getElementById('addBotBtn').onclick = hostAddBot;
+document.getElementById('removeBotBtn').onclick = hostRemoveBot;
+document.getElementById('startOnlineBtn').onclick = hostStart;
+document.getElementById('copyBtn').onclick = async () => {
+  const txt = `Vieni a giocare a Sali e Scendi! Codice stanza: ${NET.code}`;
+  try{ await navigator.clipboard.writeText(txt); toast('Invito copiato'); }
+  catch(e){ toast('Codice stanza: ' + NET.code); }
+};
+document.getElementById('leaveLobbyBtn').onclick = async () => {
+  await netLeave(); MODE = 'home'; showScreen('home');
+};
+
+document.getElementById('continueBtn').onclick = () => {
+  if(MODE !== 'cpu') return;
+  document.getElementById('handOverlay').classList.add('hidden');
+  nextHand(G, Date.now()); render();
+};
+document.getElementById('restartBtn').onclick = async () => {
+  document.getElementById('endOverlay').classList.add('hidden');
+  if(MODE === 'cpu'){ clearInterval(localLoop); showScreen('home'); }
+  else if(NET.host){ hostBackToLobby(); }
+};
+document.getElementById('menuBtn').onclick = () => { syncSpeed();
+  document.getElementById('speedRow').classList.toggle('hidden', MODE !== 'cpu');
+  document.getElementById('menuOverlay').classList.remove('hidden'); };
+document.getElementById('resumeBtn').onclick = () => document.getElementById('menuOverlay').classList.add('hidden');
+document.getElementById('quitBtn').onclick = async () => {
+  clearInterval(localLoop);
+  ['menuOverlay','handOverlay','endOverlay'].forEach(i => document.getElementById(i).classList.add('hidden'));
+  if(MODE === 'online') await netLeave();
+  MODE = 'home'; showScreen('home');
+};
+
+const APP_VERSION = '11 (Firebase)';
+document.getElementById('verLine').textContent = 'versione ' + APP_VERSION;
+
+/* controllo il collegamento appena si apre, e lo dico chiaramente */
+document.getElementById('netProbe').textContent = 'controllo il collegamento…';
+ensureStorage(12000).then(ok => {
+  const el = document.getElementById('netProbe');
+  if(ok){ el.textContent = '● online pronto'; el.style.color = '#7DD3A0'; el.style.opacity = '.8'; }
+  else  { el.textContent = '● online non disponibile'; el.style.color = '#E88C8C'; el.style.opacity = '.8'; }
+});
+
+document.getElementById('retryNetBtn').onclick = async () => {
+  document.getElementById('onlineWarn').classList.remove('hidden');
+  const d = document.getElementById('diagLine');
+  d.textContent = 'Diagnostica in corso…';
+  STORE = null;
+  d.innerHTML = await runDiagnostics();
+};
+
+document.getElementById('setupPreview').innerHTML =
+  cardSVG({suit:'denari',rank:1},52) + cardSVG({suit:'coppe',rank:10},52) +
+  cardSVG({suit:'spade',rank:9},52) + cardSVG({suit:'bastoni',rank:7},52);
+
+async function showNetProblem(err){
+  MODE = 'home';
+  showScreen('home');
+  document.getElementById('onlineWarn').classList.remove('hidden');
+  const d = document.getElementById('diagLine');
+  d.innerHTML = (err ? ('<b>Errore:</b> ' + errText(err) + '<br>') : '') + 'Diagnostica in corso…';
+  d.innerHTML = (err ? ('<b>Errore:</b> ' + errText(err) + '<br>') : '') + (await runDiagnostics());
+}
+
+
+// il conto alla rovescia si aggiorna da solo
+setInterval(() => { if(MODE === 'online' && currentGame()) renderTimer(); }, 250);
+
+})();
+</script>
+</body>
+</html>
