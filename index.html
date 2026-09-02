@@ -739,17 +739,46 @@ const FIREBASE_URL = 'https://sali-e-scendi-default-rtdb.europe-west1.firebaseda
 
 function fbPath(key){ return key.split(':').join('/'); }
 
+/* Firebase cancella in silenzio qualsiasi valore null, array vuoto []
+   o oggetto vuoto {} scritto al suo interno. Per evitare che sparisca
+   un pezzo dei dati della partita, li travestiamo prima di scrivere
+   e li ripristiniamo dopo aver letto. */
+const NULL_MARK = '\u0000NULL\u0000';
+const EMPTY_ARR_MARK = '\u0000EMPTY_ARRAY\u0000';
+const EMPTY_OBJ_MARK = '\u0000EMPTY_OBJECT\u0000';
+
+function fbEncode(value){
+  return JSON.stringify(value, function(k, v){
+    if(v === null) return NULL_MARK;
+    if(Array.isArray(v) && v.length === 0) return EMPTY_ARR_MARK;
+    if(v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) return EMPTY_OBJ_MARK;
+    return v;
+  });
+}
+function fbDecode(value){
+  if(value === NULL_MARK) return null;
+  if(value === EMPTY_ARR_MARK) return [];
+  if(value === EMPTY_OBJ_MARK) return {};
+  if(Array.isArray(value)) return value.map(fbDecode);
+  if(value && typeof value === 'object'){
+    const out = {};
+    for(const k in value) out[k] = fbDecode(value[k]);
+    return out;
+  }
+  return value;
+}
+
 async function fbGet(key){
   const url = `${FIREBASE_URL}/${fbPath(key)}.json?_=${Date.now()}`;
   const res = await fetch(url, {cache: 'no-store'});
   if(!res.ok) throw new Error('lettura fallita (' + res.status + ')');
-  const data = await res.json();
-  if(data === null) throw new Error('non trovata');
-  return {key, value: data};
+  const raw = await res.json();
+  if(raw === null) throw new Error('non trovata');
+  return {key, value: fbDecode(raw)};
 }
 async function fbSet(key, value){
   const res = await fetch(`${FIREBASE_URL}/${fbPath(key)}.json`, {
-    method: 'PUT', body: JSON.stringify(value), cache: 'no-store'
+    method: 'PUT', body: fbEncode(value), cache: 'no-store'
   });
   if(!res.ok) throw new Error('scrittura fallita (' + res.status + ')');
   return {key, value};
@@ -1180,13 +1209,23 @@ function render(){
   try{ renderInner(); }
   catch(e){
     const sm = document.getElementById('statusMsg');
-    if(sm) sm.textContent = '⚠ Errore di visualizzazione: ' + (e && e.message ? e.message : e);
+    const g = currentGame();
+    const keys = g ? Object.keys(g).join(',') : '(nessuna partita)';
+    const roomKeys = (MODE==='online' && NET.room) ? Object.keys(NET.room).join(',') : '(n/d)';
+    if(sm) sm.textContent = '⚠ ' + (e && e.message ? e.message : e) +
+      ' | campi partita: ' + keys + ' | campi stanza: ' + roomKeys;
   }
 }
 function renderInner(){
   const g = currentGame();
   if(!g) return;
   const n = g.n, me = myPos();
+  if(!g.bids)   g.bids   = new Array(n).fill(null);
+  if(!g.tricks) g.tricks = new Array(n).fill(0);
+  if(!g.absent) g.absent = new Array(n).fill(false);
+  if(!g.names)  g.names  = new Array(n).fill('?');
+  if(!g.hands)  g.hands  = new Array(n).fill([]);
+  if(!g.trick)  g.trick  = [];
 
   document.getElementById('handIdx').textContent = g.handIndex + 1;
   document.getElementById('handSizeLbl').textContent =
@@ -1487,7 +1526,7 @@ document.getElementById('quitBtn').onclick = async () => {
   MODE = 'home'; showScreen('home');
 };
 
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 document.getElementById('verLine').textContent = 'versione ' + APP_VERSION;
 document.getElementById('versionBadge').textContent = 'v' + APP_VERSION;
 
