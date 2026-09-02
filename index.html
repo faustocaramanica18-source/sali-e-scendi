@@ -175,6 +175,9 @@
 </head>
 <body>
 <div id="app">
+<div id="versionBadge" style="position:fixed;top:6px;right:8px;z-index:99;font-size:10.5px;
+  background:rgba(0,0,0,.4);color:#EAD08A;padding:2px 8px;border-radius:8px;
+  font-family:monospace;pointer-events:none;opacity:.85;">v?</div>
 
   <!-- ============ HOME ============ -->
   <div id="home" class="setup-wrap">
@@ -984,7 +987,7 @@ async function hostCycle(){
       if((room.applied[i.id] || 0) >= a.seq) return;
       room.applied[i.id] = a.seq;
       const seat = room.seats.findIndex(s => s.id === i.id);
-      if(seat >= 0 && room.game) applyRemote(room.game, seat, a, now);
+      if(seat >= 0 && room.game && turnSig(room.game) === a.sig) applyRemote(room.game, seat, a, now);
       dirty = true;
     });
 
@@ -1078,6 +1081,9 @@ const turnSig = g => `${g.phase}:${g.handIndex}:${g.bidPos}:${g.trick.length}`;
 function showScreen(id){
   ['home','setupCpu','joinScreen','lobby','game'].forEach(s =>
     document.getElementById(s).classList.toggle('hidden', s !== id));
+  // forza il browser a calcolare subito la nuova disposizione,
+  // prima che qualcosa venga posizionato in percentuale al suo interno
+  void document.getElementById(id).offsetHeight;
 }
 function toast(msg){
   const t = document.getElementById('toast');
@@ -1117,7 +1123,17 @@ function renderAll(){
   const room = NET.room;
   if(!room) return;
   if(room.status === 'lobby'){ showScreen('lobby'); renderLobby(); }
-  else { showScreen('game'); render(); }
+  else {
+    const wasHidden = document.getElementById('game').classList.contains('hidden');
+    showScreen('game');
+    if(wasHidden){
+      // il tavolo circolare posiziona i giocatori in percentuale: appena
+      // compare, aspettiamo che il browser finisca di calcolare le misure
+      requestAnimationFrame(() => requestAnimationFrame(render));
+    } else {
+      render();
+    }
+  }
 }
 
 function renderLobby(){
@@ -1161,6 +1177,13 @@ function renderLobby(){
 }
 
 function render(){
+  try{ renderInner(); }
+  catch(e){
+    const sm = document.getElementById('statusMsg');
+    if(sm) sm.textContent = '⚠ Errore di visualizzazione: ' + (e && e.message ? e.message : e);
+  }
+}
+function renderInner(){
   const g = currentGame();
   if(!g) return;
   const n = g.n, me = myPos();
@@ -1311,10 +1334,10 @@ function actPlay(card){
 }
 function sendAction(kind, value){
   NET.seq++;
-  NET.action = {seq:NET.seq, kind, value};
+  NET.action = {seq:NET.seq, kind, value, sig: NET.sentSig};
   if(NET.host && NET.room.game){
     NET.room.applied[NET.id] = NET.seq;
-    applyRemote(NET.room.game, myPos(), NET.action, Date.now());
+    if(turnSig(NET.room.game) === NET.action.sig) applyRemote(NET.room.game, myPos(), NET.action, Date.now());
     writeState(); render();
   } else {
     writeMe(true).catch(()=>{});
@@ -1464,8 +1487,9 @@ document.getElementById('quitBtn').onclick = async () => {
   MODE = 'home'; showScreen('home');
 };
 
-const APP_VERSION = '11 (Firebase)';
+const APP_VERSION = '15';
 document.getElementById('verLine').textContent = 'versione ' + APP_VERSION;
+document.getElementById('versionBadge').textContent = 'v' + APP_VERSION;
 
 /* controllo il collegamento appena si apre, e lo dico chiaramente */
 document.getElementById('netProbe').textContent = 'controllo il collegamento…';
