@@ -275,7 +275,7 @@
   <!-- ============ TAVOLO ============ -->
   <div id="game" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:6px;">
     <div class="topbar">
-      <div class="hand-pill">Mano <b id="handIdx">1</b>/16 · <span id="handSizeLbl"></span></div>
+      <div class="hand-pill">Mano <b id="handIdx">1</b>/<span id="handTot">16</span> · <span id="handSizeLbl"></span></div>
       <button class="icon-btn" id="menuBtn">⋯</button>
     </div>
     <div class="dealer-banner" id="dealerBanner"></div>
@@ -485,7 +485,18 @@ function cardSVG(card, widthPx){
    Il motore non disegna niente: riceve una partita `g`, l'ora
    attuale, e fa avanzare il gioco. Online lo esegue l'host.
    ============================================================ */
-const HAND_SEQUENCE = [1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1];
+/* Il massimo di carte per giocatore dipende da quanti sono:
+   40 carte / 4 giocatori = 10, / 5 giocatori = 8.
+   La sequenza sale fino al massimo, lo ripete (le due mani a tre sette,
+   senza briscola perché il mazzo è finito) e riscende.
+   4 giocatori → 20 mani, 5 giocatori → 16 mani. */
+function maxHandFor(n){ return Math.floor(40 / n); }
+function handSequenceFor(n){
+  const max = maxHandFor(n), seq = [];
+  for(let i = 1; i <= max; i++) seq.push(i);
+  for(let i = max; i >= 1; i--) seq.push(i);
+  return seq;
+}
 const STRENGTH_NORMAL   = {1:10,3:9,10:8,9:7,8:6,7:5,6:4,5:3,4:2,2:1};
 const STRENGTH_TRESETTE = {3:10,2:9,1:8,10:7,9:6,8:5,7:4,6:3,5:2,4:1};
 const SPEEDS = {slow:{bid:1900,play:2100,trick:2800}, normal:{bid:1250,play:1450,trick:2000}, fast:{bid:550,play:650,trick:1100}};
@@ -496,7 +507,7 @@ const BOT_MS        = 1300;   // pausa dei giocatori computer, online
 const TRICK_HOLD    = 2400;   // quanto resta visibile la presa, online
 const HAND_HOLD     = 8000;   // pausa tra una mano e l'altra, online
 
-const strengthMap = hs => hs===8 ? STRENGTH_TRESETTE : STRENGTH_NORMAL;
+const strengthMap = g => (g.handSize === g.maxHand) ? STRENGTH_TRESETTE : STRENGTH_NORMAL;
 
 function freshDeck(){
   const d=[];
@@ -510,6 +521,7 @@ function newGame(names, isBot, online){
   const g = {
     n, names:names.slice(), isBot:isBot.slice(), absent:names.map(()=>false),
     online:!!online,
+    maxHand: maxHandFor(n), sequence: handSequenceFor(n),
     totals:names.map(()=>0),
     dealer:0, handIndex:0, handSize:1,
     hands:[], trump:null, trumpSuit:null,
@@ -523,11 +535,11 @@ function newGame(names, isBot, online){
 }
 
 function dealHand(g, now){
-  g.handSize = HAND_SEQUENCE[g.handIndex];
+  g.handSize = g.sequence[g.handIndex];
   const deck = freshDeck();
   g.hands = [];
   for(let p=0;p<g.n;p++) g.hands.push(deck.splice(0,g.handSize));
-  if(g.handSize<=7){ g.trump = deck.splice(0,1)[0]; g.trumpSuit = g.trump.suit; }
+  if(g.handSize < g.maxHand){ g.trump = deck.splice(0,1)[0]; g.trumpSuit = g.trump.suit; }
   else { g.trump=null; g.trumpSuit=null; }
   g.hands.forEach(sortHand);
   g.bids   = new Array(g.n).fill(null);
@@ -585,8 +597,8 @@ function legalCards(g,p){
 }
 
 function winnerOfTrick(g, trick){
-  const led = trick[0].card.suit, map = strengthMap(g.handSize);
-  const isT = c => g.handSize!==8 && g.trumpSuit && c.suit===g.trumpSuit;
+  const led = trick[0].card.suit, map = strengthMap(g);
+  const isT = c => g.trumpSuit && c.suit===g.trumpSuit;
   let best = trick[0];
   for(let i=1;i<trick.length;i++){
     const t = trick[i];
@@ -601,10 +613,10 @@ function winnerOfTrick(g, trick){
 
 /* --- scelte del computer --- */
 function botBid(g,p){
-  const map = strengthMap(g.handSize);
+  const map = strengthMap(g);
   let est=0;
   g.hands[p].forEach(c=>{
-    const isT = g.handSize!==8 && g.trumpSuit && c.suit===g.trumpSuit;
+    const isT = g.trumpSuit && c.suit===g.trumpSuit;
     let pw = map[c.rank]/10; if(isT) pw += 0.35;
     if(pw>=0.85) est+=1; else if(pw>=0.6) est+=0.5;
   });
@@ -615,7 +627,7 @@ function botBid(g,p){
 }
 
 function botCard(g,p){
-  const legal = legalCards(g,p), map = strengthMap(g.handSize);
+  const legal = legalCards(g,p), map = strengthMap(g);
   const needs = g.tricks[p] < (g.bids[p]||0);
   const wins = legal.filter(c=>winnerOfTrick(g, g.trick.concat([{p,card:c}]))===p);
   if(needs && wins.length){ wins.sort((a,b)=>map[a.rank]-map[b.rank]); return wins[0]; }
@@ -691,7 +703,7 @@ function scoreHand(g,now){
 
 function nextHand(g,now){
   g.handIndex++;
-  if(g.handIndex>=HAND_SEQUENCE.length){
+  if(g.handIndex>=g.sequence.length){
     g.phase='gameEnd'; g.holdUntil=null; g.actAt=null; g.deadline=null;
     return;
   }
@@ -1105,7 +1117,10 @@ function myPos(){
   NET.seatMissing = (i < 0);
   return i < 0 ? 0 : i;
 }
-const turnSig = g => `${g.phase}:${g.handIndex}:${g.bidPos}:${g.trick.length}`;
+const turnSig = g => {
+  const done = (g.tricks || []).reduce((a,b) => a + (b||0), 0);
+  return `${g.phase}:${g.handIndex}:${g.bidPos}:${done}:${g.trick.length}`;
+};
 
 function showScreen(id){
   ['home','setupCpu','joinScreen','lobby','game'].forEach(s =>
@@ -1226,9 +1241,12 @@ function renderInner(){
   if(!g.hands)  g.hands  = new Array(n).fill([]);
   if(!g.trick)  g.trick  = [];
 
+  const totHands = (g.sequence && g.sequence.length) ? g.sequence.length : 16;
+  const maxH = g.maxHand || 8;
   document.getElementById('handIdx').textContent = g.handIndex + 1;
+  document.getElementById('handTot').textContent = totHands;
   document.getElementById('handSizeLbl').textContent =
-    g.handSize + (g.handSize === 1 ? ' carta' : ' carte') + (g.handSize === 8 ? ' · tre sette' : '');
+    g.handSize + (g.handSize === 1 ? ' carta' : ' carte') + (g.handSize === maxH ? ' · tre sette' : '');
 
   const banner = document.getElementById('dealerBanner');
   banner.innerHTML = g.dealer === me
@@ -1281,7 +1299,10 @@ function renderInner(){
 
   renderTimer();
 
-  const waiting = MODE === 'online' && NET.sentSig === turnSig(g);
+  const waiting = MODE === 'online' && NET.sentSig === turnSig(g)
+                  && (Date.now() - (NET.sentAt || 0)) < 3000;
+  if(MODE === 'online' && NET.sentSig === turnSig(g)
+     && (Date.now() - (NET.sentAt || 0)) >= 3000) NET.sentSig = null;   // mossa persa: riprova
   const bp = document.getElementById('bidPanel');
   const myBid = g.phase === 'bidding' && g.turnPlayer === me && !waiting;
   bp.classList.toggle('hidden', !myBid);
@@ -1345,7 +1366,8 @@ function renderTimer(){
   const bar = document.getElementById('timerBar');
   const fill = document.getElementById('timerFill');
   const rem = remainingMs();
-  const waiting = MODE === 'online' && g && NET.sentSig === turnSig(g);
+  const waiting = MODE === 'online' && g && NET.sentSig === turnSig(g)
+                  && (Date.now() - (NET.sentAt || 0)) < 3000;
   const myTurnNow = g && (g.phase === 'bidding' || g.phase === 'playing') && g.turnPlayer === myPos() && !waiting;
   if(!g || rem === null || !myTurnNow){ bar.classList.add('hidden'); return; }
   bar.classList.remove('hidden');
@@ -1360,7 +1382,7 @@ function actBid(v){
   const me = myPos();
   if(!canBid(g, me, v)) return;
   if(MODE === 'cpu'){ doBid(g, me, v, Date.now()); render(); return; }
-  NET.sentSig = turnSig(g);
+  NET.sentSig = turnSig(g); NET.sentAt = Date.now();
   sendAction('bid', v);
 }
 function actPlay(card){
@@ -1368,7 +1390,7 @@ function actPlay(card){
   const me = myPos();
   if(!canPlay(g, me, card)) return;
   if(MODE === 'cpu'){ doPlay(g, me, card, Date.now()); render(); return; }
-  NET.sentSig = turnSig(g);
+  NET.sentSig = turnSig(g); NET.sentAt = Date.now();
   sendAction('play', {suit:card.suit, rank:card.rank});
 }
 function sendAction(kind, value){
@@ -1526,7 +1548,7 @@ document.getElementById('quitBtn').onclick = async () => {
   MODE = 'home'; showScreen('home');
 };
 
-const APP_VERSION = '17';
+const APP_VERSION = '18';
 document.getElementById('verLine').textContent = 'versione ' + APP_VERSION;
 document.getElementById('versionBadge').textContent = 'v' + APP_VERSION;
 
